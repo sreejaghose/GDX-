@@ -21,7 +21,10 @@ Timing -- market-on-close, zero lookahead (matches results/timing_spec.md):
   (entry at close t+1, exit at close t+2, relative to the signal date t).
 
 Costs and sizing:
-  - commission_bps + commission_fixed charged on both entry and exit.
+  - commission_bps (% of notional) + commission_fixed (flat fee) +
+    commission_per_share (e.g. $0.005/share, a standard per-share equity
+    commission schedule) charged on both entry and exit -- all three are
+    additive, so a caller can mix or zero out whichever don't apply.
   - slippage_bps applied unfavorably to the execution price (buys pay up,
     sells/shorts receive less), on both legs.
   - Position size = position_fraction * current equity, converted to
@@ -157,6 +160,7 @@ def run_backtest(
     commission_bps: float = 10.0,
     slippage_bps: float = 5.0,
     commission_fixed: float = 0.0,
+    commission_per_share: float = 0.0,
     allow_fractional_shares: bool = False,
     direction_sign: int = -1,
 ) -> BacktestResult:
@@ -204,7 +208,7 @@ def run_backtest(
                       else np.floor(target_notional / execution_price))
                 if sh > 0:
                     notional = sh * execution_price
-                    commission = commission_fixed + commission_bps / 1e4 * notional
+                    commission = commission_fixed + commission_bps / 1e4 * notional + commission_per_share * sh
                     cash += -d * notional - commission
 
                     direction = d
@@ -229,7 +233,7 @@ def run_backtest(
                 execution_price = price_next * (1 + slippage_bps / 1e4 * transaction_direction)
                 quoted_price = price_next
                 notional = shares * execution_price
-                commission = commission_fixed + commission_bps / 1e4 * notional
+                commission = commission_fixed + commission_bps / 1e4 * notional + commission_per_share * shares
                 cash += direction * notional - commission
 
                 gross_pnl = direction * shares * (execution_price - entry_price)
@@ -282,7 +286,7 @@ def run_backtest(
     params = dict(
         lookback=lookback, threshold=threshold, ticker=ticker, account_size=account_size,
         position_fraction=position_fraction, commission_bps=commission_bps,
-        slippage_bps=slippage_bps, commission_fixed=commission_fixed,
+        slippage_bps=slippage_bps, commission_fixed=commission_fixed, commission_per_share=commission_per_share,
         allow_fractional_shares=allow_fractional_shares, direction_sign=direction_sign,
     )
 
@@ -308,11 +312,24 @@ def performance_summary(result: BacktestResult) -> dict:
     running_max = equity.cummax()
     drawdown = equity / running_max - 1
 
+    n_years = (equity.index[-1] - equity.index[0]).days / 365.25
+    total_return = equity.iloc[-1] / equity.iloc[0] - 1
+    # CAGR (compounded) rather than the arithmetic annualized_return below.
+    # Guards against a negative end_equity (theoretically possible with an
+    # unmanaged short position -- see results/backtest/README.md caveats):
+    # a fractional power of a negative base is undefined, so CAGR is
+    # reported as -100% (total wipeout) in that edge case instead of NaN.
+    if n_years > 0:
+        cagr = float((equity.iloc[-1] / equity.iloc[0]) ** (1 / n_years) - 1) if equity.iloc[-1] > 0 else -1.0
+    else:
+        cagr = float("nan")
+
     return {
         **result.params,
         "start_equity": float(equity.iloc[0]),
         "end_equity": float(equity.iloc[-1]),
-        "total_return": float(equity.iloc[-1] / equity.iloc[0] - 1),
+        "total_return": float(total_return),
+        "cagr": cagr,
         "annualized_return": float(daily_returns.mean() * TRADING_DAYS_PER_YEAR),
         "annualized_vol": float(daily_returns.std() * np.sqrt(TRADING_DAYS_PER_YEAR)),
         "sharpe": float(daily_returns.mean() / daily_returns.std() * np.sqrt(TRADING_DAYS_PER_YEAR))

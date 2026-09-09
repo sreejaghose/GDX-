@@ -7,11 +7,13 @@ position_fraction,1.0
 commission_bps,10.0
 slippage_bps,5.0
 commission_fixed,0.0
+commission_per_share,0.0
 allow_fractional_shares,False
 direction_sign,-1
 start_equity,100000.0
 end_equity,11209.153258140252
 total_return,-0.8879084674185975
+cagr,-0.1607873291796238
 annualized_return,-0.13449078433741019
 annualized_vol,0.2868121174063514
 sharpe,-0.46891597730811885
