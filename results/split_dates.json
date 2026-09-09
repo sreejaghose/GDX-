@@ -1,0 +1,26 @@
+{
+  "source_panel": "data/processed/panel.parquet",
+  "split_method": "chronological_row_count",
+  "holdout_fraction_of_total": 0.2,
+  "train_fraction_of_in_sample": 0.6,
+  "n_total_rows": 3932,
+  "train": {
+    "start_date": "2006-05-22",
+    "end_date": "2013-11-18",
+    "n_rows": 1888,
+    "path": "data/processed/train.parquet"
+  },
+  "validation": {
+    "start_date": "2013-11-19",
+    "end_date": "2018-11-15",
+    "n_rows": 1258,
+    "path": "data/processed/validation.parquet"
+  },
+  "holdout": {
+    "start_date": "2018-11-16",
+    "end_date": "2021-12-31",
+    "n_rows": 786,
+    "path": "data/processed/DO_NOT_TOUCH_holdout.parquet",
+    "note": "DO NOT TOUCH: reserved out-of-sample evaluation set. Never load, inspect, or fit anything on this file until the final, single out-of-sample evaluation."
+  }
+}
