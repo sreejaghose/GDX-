@@ -22,6 +22,8 @@ Config under test: **lookback=20d, threshold=2.0%** (the only profitable-after-c
 
 **2 of 9** grid points (including the baseline itself) have positive CAGR. Worst case: lookback=16d, threshold=1.6% -> Sharpe -0.213, CAGR -9.56%. A config whose neighbors in parameter space are mostly unprofitable is a config that was likely selected by the walk-forward grid search finding a narrow, not-very-robust local optimum rather than a broad, stable edge.
 
+![Perturbation grid heatmap](robustness/plot_perturbation_heatmap.png)
+
 ## 2. Performance by sub-period (4 equal chronological chunks)
 
 Sliced from the single continuous baseline backtest (same trade sequence Step 11 evaluated), not four independently re-run backtests -- so results below reflect the actual realized path, not a re-warmed restart at each boundary.
@@ -35,6 +37,8 @@ Sliced from the single continuous baseline backtest (same trade sequence Step 11
 
 **2 of 4 sub-periods are profitable.** Performance is concentrated in specific periods rather than persistent throughout the sample.
 
+![Baseline equity curve by sub-period](robustness/plot_subperiod_equity.png)
+
 ## 3. Cost sensitivity (2x commission and slippage)
 
 | Scenario | Commission/share | Slippage | CAGR | Sharpe | Max DD | Total return |
@@ -43,6 +47,8 @@ Sliced from the single continuous baseline backtest (same trade sequence Step 11
 | 2x | $0.010 | 10bps | -13.82% | -0.376 | -88.2% | -84.4% |
 
 Doubling costs moves CAGR from 0.44% to -13.82% (flips it negative). At 9.2 trades/month, this strategy trades often enough that cost assumptions matter a lot -- this is not a low-turnover strategy where a cost-doubling would be a rounding error.
+
+![Cost sensitivity: 1x vs 2x](robustness/plot_cost_sensitivity.png)
 
 ## 4. Trades-per-month >= 1 check, per sub-period (not just in aggregate)
 
@@ -56,6 +62,8 @@ Step 11 reported +0.44% CAGR at an aggregate 9.17 trades/month. That aggregate n
 | 4 | 8.71 | PASS |
 
 **All 4 sub-periods pass the >= 1 trade/month bar.** Trade frequency is not an artifact of a few active months hiding inside an inactive aggregate -- the strategy fires consistently throughout the sample.
+
+![Trade frequency by sub-period](robustness/plot_trades_per_month.png)
 
 ## Bottom line
 
