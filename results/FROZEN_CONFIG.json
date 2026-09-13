@@ -1,0 +1,77 @@
+{
+  "_meta": {
+    "description": "Frozen final configuration for the GDX next-day-direction strategy, selected entirely from the in-sample process (train+validation). This file is the single source of truth for the parameters to apply in any holdout evaluation.",
+    "frozen_at_utc": "2026-09-13T18:22:56Z",
+    "frozen_from": "results/backtest_results.csv (rank 1 of 5, the only config profitable after costs)",
+    "selection_process": [
+      "results/walk_forward_grid.csv: walk-forward grid search over lookback x threshold, ranked by walk-forward Sharpe",
+      "results/backtest_results.csv: top 5 walk-forward configs re-run through the realistic-cost backtest engine (src/backtest.py); this config was rank 1 and the only one profitable after costs",
+      "results/robustness_report.md: perturbation, sub-period, and cost-sensitivity checks on this exact config",
+      "results/significance_report.md: t-test and bootstrap significance checks on this exact config"
+    ],
+    "DO_NOT": "Do not modify this file's parameter values and do not re-run any tuning, grid search, or parameter selection after this point. This file freezes the in-sample decision; any change here would leak holdout-era judgment back into a supposedly-frozen in-sample choice."
+  },
+
+  "ticker": "GDX",
+  "signal": {
+    "type": "reversal_on_trailing_return_threshold",
+    "lookback_days": 20,
+    "threshold": 0.02,
+    "direction": "reversal",
+    "direction_sign": -1,
+    "description": "signal[t] = -sign(GDX[t]/GDX[t-20] - 1) if |GDX[t]/GDX[t-20] - 1| >= 0.02 else 0 (flat deadzone). direction_sign=-1 is fixed for the whole backtest period, not adaptively refit (unlike results/walk_forward_grid.csv's adaptive quarterly direction, which this frozen config does NOT use)."
+  },
+
+  "exit_rule": {
+    "type": "exit_after_n_days",
+    "n_days": 0,
+    "description": "Fixed 1-day hold. n_days=0 in src.backtest.exit_after_n_days reproduces the original results/timing_spec.md convention exactly: signal known at close t, entry executes at close t+1, exit executes at close t+2."
+  },
+
+  "timing": {
+    "entry": "market-on-close, at close t+1 (t = signal date)",
+    "exit": "market-on-close, at close t+2",
+    "reference": "results/timing_spec.md"
+  },
+
+  "position_sizing": {
+    "position_fraction": 1.0,
+    "allow_fractional_shares": false,
+    "account_size_used_for_in_sample_eval": 100000.0,
+    "note": "position_fraction and allow_fractional_shares are the strategy's sizing rule and should carry over to any account size; account_size_used_for_in_sample_eval was only the reference size used for in-sample reporting, not a constraint on deployment size."
+  },
+
+  "cost_assumptions": {
+    "commission_bps": 0.0,
+    "commission_per_share": 0.005,
+    "commission_fixed": 0.0,
+    "slippage_bps": 5.0,
+    "description": "$0.005/share commission + 0.05% (5bps) slippage per leg (entry and exit each), applied unfavorably to the execution price. See src/backtest.py and results/backtest_results.csv."
+  },
+
+  "in_sample_performance_reference": {
+    "data_used": "train+validation (data/processed/train.parquet + data/processed/validation.parquet); holdout never touched",
+    "backtest_cagr": 0.0043875024832631,
+    "backtest_sharpe": 0.1573321425311427,
+    "max_drawdown": -0.6945085263962669,
+    "trades_per_month": 9.165562913907284,
+    "n_trades": 1384,
+    "total_return": 0.0561776461426879,
+    "profitable_after_costs": true,
+    "net_pnl_after_costs_usd": 5617.764614268432,
+    "walk_forward_sharpe": 0.3791315413067188,
+    "t_test_p_value": 0.5784,
+    "bootstrap_sharpe_5th_pct": -0.331,
+    "bootstrap_sharpe_95th_pct": 0.639
+  },
+
+  "known_limitations": [
+    "Mean daily strategy return is NOT statistically distinguishable from zero (t-test p=0.578, results/significance_report.md).",
+    "Bootstrap 90% interval for trade-level Sharpe is [-0.33, 0.64] -- straddles zero; the positive point-estimate Sharpe is not resampling-stable.",
+    "Only 2 of 4 equal chronological sub-periods were profitable in-sample; performance was concentrated in 2006-2009 and 2015-2018 (results/robustness_report.md).",
+    "Only 2 of 9 nearby (lookback, threshold) parameter combinations (+/-20% perturbation) were profitable -- a narrow, fragile optimum, not a broad edge.",
+    "Doubling assumed costs flips CAGR from +0.44% to -13.8%.",
+    "This config was fixed-direction (reversal) for its entire in-sample backtest; the walk-forward grid's more optimistic Sharpe (0.379) was earned under an adaptive, quarterly-refit direction that this frozen config does not use.",
+    "None of this constitutes a validated trading edge. Freezing these parameters preserves methodological discipline (no further in-sample tuning) -- it is not a claim that the strategy is expected to be profitable out of sample."
+  ]
+}
