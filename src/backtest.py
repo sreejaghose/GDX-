@@ -164,11 +164,49 @@ def run_backtest(
     allow_fractional_shares: bool = False,
     direction_sign: int = -1,
 ) -> BacktestResult:
+    """Reversal/momentum threshold-rule signal (src/naive_baseline.py,
+    src/walk_forward.py). Thin wrapper around run_backtest_on_signal --
+    see that function for any custom signal (e.g. a fitted model's
+    predictions, as in src/ml_signal.py)."""
+    prices = panel[ticker].dropna().sort_index()
+    strategy_signal = compute_strategy_signal(prices, lookback, threshold, direction_sign)
+
+    result = run_backtest_on_signal(
+        panel, strategy_signal, exit_rule, ticker=ticker, account_size=account_size,
+        position_fraction=position_fraction, commission_bps=commission_bps, slippage_bps=slippage_bps,
+        commission_fixed=commission_fixed, commission_per_share=commission_per_share,
+        allow_fractional_shares=allow_fractional_shares,
+    )
+    result.params.update(lookback=lookback, threshold=threshold, direction_sign=direction_sign)
+    return result
+
+
+def run_backtest_on_signal(
+    panel: pd.DataFrame,
+    strategy_signal: pd.Series,
+    exit_rule: Callable[[ExitContext], bool],
+    ticker: str = "GDX",
+    account_size: float = 100_000.0,
+    position_fraction: float = 1.0,
+    commission_bps: float = 10.0,
+    slippage_bps: float = 5.0,
+    commission_fixed: float = 0.0,
+    commission_per_share: float = 0.0,
+    allow_fractional_shares: bool = False,
+) -> BacktestResult:
+    """Same engine as run_backtest (market-on-close, costs, sizing,
+    pluggable exit rules -- see module docstring), but takes an arbitrary
+    precomputed signal Series (+1/-1/0, indexed like panel[ticker]) instead
+    of generating one internally. strategy_signal[t] must already be
+    causal (a function of data known at or before close t) -- this
+    function does not check that; the caller is responsible for it (see
+    src/ml_signal.py's walk-forward refit for how the ML-driven signal
+    proves that property)."""
     prices = panel[ticker].dropna().sort_index()
     dates = prices.index
     n = len(dates)
 
-    strategy_signal = compute_strategy_signal(prices, lookback, threshold, direction_sign)
+    strategy_signal = strategy_signal.reindex(dates)
 
     cash = account_size
     in_position = False
@@ -284,10 +322,10 @@ def run_backtest(
     trades_per_month = len(trade_log) / n_months if n_months > 0 else np.nan
 
     params = dict(
-        lookback=lookback, threshold=threshold, ticker=ticker, account_size=account_size,
+        ticker=ticker, account_size=account_size,
         position_fraction=position_fraction, commission_bps=commission_bps,
         slippage_bps=slippage_bps, commission_fixed=commission_fixed, commission_per_share=commission_per_share,
-        allow_fractional_shares=allow_fractional_shares, direction_sign=direction_sign,
+        allow_fractional_shares=allow_fractional_shares,
     )
 
     return BacktestResult(
